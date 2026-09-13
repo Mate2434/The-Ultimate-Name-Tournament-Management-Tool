@@ -24,6 +24,13 @@
 <div class="bar"><button id="reshuffleBracket">再抽選する</button><button id="resetResults">勝敗だけリセット</button></div>
 <h3>勝ち上がる回答を選択</h3><p class="muted">全員が揃った対戦で回答をタップすると、次の対戦に自動で入ります。訂正すると、その先の対戦結果だけを解除します。名前の下から回答の詳細も確認できます。</p>
 <div id="roundTabs" class="round-tabs"></div><div id="matchCards" class="match-grid"></div>
+<details id="matchPostsPanel"><summary>対戦表・投票用投稿を出力</summary>
+<p class="muted">表示中ラウンドの試合ごとに出力します。名前だけを載せ、出場する回答が全件確定してからコピーできます。</p>
+<div class="grid">
+<div class="post-bulk"><h3>対戦表の時間を一括設定</h3><div class="bar"><label>時間<input id="bulkMatchValue" type="number" min="1" max="999999" step="1" value="60"></label><label>単位<select id="bulkMatchUnit"><option value="s">秒 (s)</option><option value="m">分 (m)</option></select></label></div><label>適用先<select id="bulkMatchScope"><option value="all">全試合</option><option value="round">表示中ラウンド</option></select></label><button id="applyMatchTime">対戦表の時間を適用</button></div>
+<div class="post-bulk"><h3>投票の時間・方式を一括設定</h3><div class="bar"><label>時間<input id="bulkVoteValue" type="number" min="1" max="999999" step="1" value="60"></label><label>単位<select id="bulkVoteUnit"><option value="s">秒 (s)</option><option value="m">分 (m)</option></select></label></div><label>投票方式<select id="bulkVoteCommand"><option>!投票</option><option>!複数投票</option><option>!コメント投票</option><option>!連打投票</option></select></label><label>適用先<select id="bulkVoteScope"><option value="all">全試合</option><option value="round">表示中ラウンド</option></select></label><button id="applyVoteTime">投票の設定を適用</button></div>
+</div><p class="muted">一括適用は個別設定も上書きします。対戦表側の操作で投票の時間は変わりません。初期値は両方60sです。</p><div id="matchPostCards"></div>
+</details>
 <details id="diagramDetails"><summary>トーナメント全体図を見る</summary><p class="muted">横・縦にスクロールできます。画像では長い名前を省略します。全文は対戦カードで確認してください。</p><div id="bracketDiagram" class="diagram-scroll"></div></details>
 <h3>画像で共有</h3><div class="grid"><label>画像に含める情報<select id="imageMode"><option value="current">現在の進行状況</option><option value="preview">事前公開：勝敗を隠す</option><option value="anonymous">事前公開：回答名と勝敗を隠す</option></select></label><label>書き出す範囲<select id="imageScope"><option value="all">トーナメント全体図</option><option value="round">表示中ラウンド（8試合ごとに分割）</option></select></label></div>
 <label><input type="checkbox" id="imageSpoiler"> Discord用スポイラー画像にする（SPOILER_付きファイル名）</label>
@@ -32,4 +39,4 @@
 </div>
 </section>
 
-<footer>最強の名前トーナメント 管理ツール(仮称) · v0.3.0</footer></main></div><script src="core.js?v=0.3.0"></script><script src="bracket.js?v=0.3.0"></script><script src="bracket-image.js?v=0.3.0"></script><script src="app.js?v=0.3.0"></script><script src="tournament-ui.js?v=0.3.0"></script></body></html>
+<footer>最強の名前トーナメント 管理ツール(仮称) · v0.3.1</footer></main></div><script src="core.js?v=0.3.0"></script><script src="bracket.js?v=0.3.0"></script><script src="bracket-image.js?v=0.3.0"></script><script src="app.js?v=0.3.0"></script><script src="match-posts.js?v=0.3.1"></script><script src="tournament-ui.js?v=0.3.0"></script></body></html>
