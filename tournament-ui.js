@@ -1,6 +1,6 @@
 'use strict';
 (function(){
- let lastId=null,selectedRound=0,exportUrls=[],renderedBracket=null,exportToken=0;
+ let lastId=null,selectedRound=0,exportUrls=[],renderedBracket=null,exportToken=0,lastPostBracket=null;
  function settings(t){if(!t.bracketSetup||typeof t.bracketSetup!=='object'||Array.isArray(t.bracketSetup))t.bracketSetup={};const s=t.bracketSetup;
  if(!['answers','manual','demo'].includes(s.source))s.source='answers';if(typeof s.manual!=='string')s.manual='';if(!Number.isInteger(s.demoCount)||s.demoCount<2||s.demoCount>256)s.demoCount=16;if(!Number.isInteger(s.k)||s.k<2||s.k>10)s.k=2;if(typeof s.randomize!=='boolean')s.randomize=true;if(!Array.isArray(s.selected)||!s.selected.every(x=>typeof x==='string'))s.selected=null;return s;}
  function sourceEntries(t){const s=settings(t);if(s.source==='demo')return Bracket.demo(s.demoCount);if(s.source==='manual')return s.manual.split(/\r?\n/).map((name,i)=>({id:`manual-${i+1}`,name:name.trim(),details:'',row:i+1})).filter(e=>e.name);
@@ -25,7 +25,26 @@
  if(entry){const detail=el('details'),summary=el('summary',`回答詳細${entry.row?` · 元の行${entry.row}`:''}`);detail.append(summary,el('pre',entry.name+(entry.details?'\n\n'+entry.details:'')));card.append(detail);}});
  if(ms.winner){const reset=el('button','この対戦の結果を取り消す');reset.onclick=()=>{if(!confirm('この対戦と、関連する上位対戦の結果を取り消しますか？'))return;Bracket.choose(b,m.id,null);save();cleanExports();renderLive(t);};card.append(reset);}
  const parent=g.matches.find(other=>other.sources.some(src=>src.type==='match'&&src.id===m.id));card.append(el('div',parent?`勝者 → ${parent.id}`:'勝者 → 優勝','destination'));$('matchCards').append(card);}
+ renderPosts(t);
  }
+ function renderPosts(t){
+ const b=t.bracket,g=Bracket.graph(b.entries,b.k),host=$('matchPostCards');host.replaceChildren();
+ if(lastPostBracket!==b){lastPostBracket=b;const p=MatchPosts.config(b);$('bulkMatchValue').value=p.matchTime.value;$('bulkMatchUnit').value=p.matchTime.unit;$('bulkVoteValue').value=p.voteTime.value;$('bulkVoteUnit').value=p.voteTime.unit;$('bulkVoteCommand').value=p.command;$('bulkMatchScope').value='all';$('bulkVoteScope').value='all';}
+ for(const m of g.rounds[selectedRound]){
+ const post=MatchPosts.format(b,m.id),box=el('details',undefined,'post-card');box.append(el('summary',`${post.label} · ${m.id}${post.ready?'':'（回答の確定待ち）'}`));const panels=el('div',undefined,'grid');
+ for(const kind of ['match','vote']){const voting=kind==='vote',title=voting?'投票用投稿':'対戦表',opts=post.options,timer=voting?opts.voteTime:opts.matchTime,panel=el('div');panel.append(el('h4',title));const controls=el('div',undefined,'post-settings');
+ const valueLabel=el('label','時間'),value=el('input');value.type='number';value.min='1';value.max='999999';value.step='1';value.value=timer.value;value.setAttribute('aria-label',`${m.id} ${title}の時間`);valueLabel.append(value);
+ const unitLabel=el('label','単位'),unit=el('select');unit.add(new Option('秒 (s)','s'));unit.add(new Option('分 (m)','m'));unit.value=timer.unit;unit.setAttribute('aria-label',`${m.id} ${title}の単位`);unitLabel.append(unit);controls.append(valueLabel,unitLabel);let command=null;
+ if(voting){const commandLabel=el('label','投票方式');command=el('select');MatchPosts.commands.forEach(c=>command.add(new Option(c,c)));command.value=opts.command;command.setAttribute('aria-label',`${m.id} 投票方式`);commandLabel.append(command);controls.append(commandLabel);}panel.append(controls);
+ const output=el('textarea');output.readOnly=true;output.value=post.ready?post[kind]:'';output.setAttribute('aria-label',`${m.id} ${title}の投稿文`);const button=el('button',`${title}をコピー`,'post-copy'),hint=el('p',undefined,'muted');
+ const refresh=()=>{const formatted=MatchPosts.format(b,m.id),text=formatted[kind];output.value=formatted.ready?text:'';button.disabled=!formatted.ready||text.length>2000;hint.textContent=!formatted.ready?'前の対戦の勝者を選ぶと投稿文が表示されます。':text.length>2000?`${text.length}文字：Discordの通常の1投稿上限を超えています。名前の長さを調整してください。`:`${text.length}文字`;};
+ const change=()=>{try{MatchPosts.update(b,[m.id],kind,value.value,unit.value,command?.value);save();button.textContent=`${title}をコピー`;refresh();}catch(e){notice(e.message);const prev=MatchPosts.options(b,m.id),tm=voting?prev.voteTime:prev.matchTime;value.value=tm.value;unit.value=tm.unit;if(command)command.value=prev.command;}};
+ value.onchange=change;unit.onchange=change;if(command)command.onchange=change;button.onclick=async()=>{const latest=MatchPosts.format(b,m.id);if(!latest.ready||latest[kind].length>2000)return;try{await navigator.clipboard.writeText(latest[kind]);button.textContent='コピーしました';}catch{output.focus();output.select();notice('投稿文を選択しました。コピー操作を行ってください。');}};refresh();panel.append(output,button,hint);panels.append(panel);
+ }box.append(panels);host.append(box);
+ }
+ }
+ function applyPostTime(kind){const t=current(),b=t.bracket;if(!b)return;const voting=kind==='vote',prefix=voting?'bulkVote':'bulkMatch',g=Bracket.graph(b.entries,b.k),ids=$(prefix+'Scope').value==='round'?g.rounds[selectedRound].map(m=>m.id):null;try{MatchPosts.update(b,ids,kind,$(prefix+'Value').value,$(prefix+'Unit').value,voting?$('bulkVoteCommand').value:undefined);save();renderPosts(t);notice(`${voting?'投票の時間・方式':'対戦表の時間'}を${ids?'表示中ラウンド':'全試合'}に適用しました。`);}catch(e){notice(e.message);}}
+ $('applyMatchTime').onclick=()=>applyPostTime('match');$('applyVoteTime').onclick=()=>applyPostTime('vote');
  function renderLive(t){const b=t.bracket;$('bracketLive').hidden=!b;if(!b)return;const g=Bracket.graph(b.entries,b.k),st=Bracket.status(b,g);$('bracketSummary').replaceChildren();for(const [label,value] of [['参加回答',b.entries.length],['確定した試合',`${st.completed} / ${g.matches.length}`],['初戦シード',g.byes.length]]){const box=el('div',undefined,'stat');box.append(el('strong',value),el('span',label));$('bracketSummary').append(box);}
  let stale=false;if(b.source==='answers'){const pool=Core.assess(t).filter(r=>r.status==='採用').map(r=>({id:`row-${r.row}`,name:r.cells[t.nameCol],details:[...new Set([...(t.extraCols||[]),...t.fields])].filter(i=>i>=0&&i!==t.nameCol&&r.cells[i]).map(i=>`${t.headers[i]}：${r.cells[i]}`).join('\n'),row:r.row}));stale=JSON.stringify(pool)!==b.signature;}
  $('bracketStale').textContent=(b.source==='demo'?'仮データのトーナメントです。 ':'')+(stale?'収集データまたは列設定が作成時から変わっています。進行中の表は作成時の回答を保持しています。':'参加回答は作成時点の内容で固定しています。');$('bracketChampion').hidden=!st.champion;$('bracketChampion').textContent=st.champion?`優勝：${b.entries.find(e=>e.id===st.champion).name}`:'';renderMatches(t);renderDiagram(t);}
